@@ -1,0 +1,7 @@
+{
+  "name": "SmartRisk AI Decision Center",
+  "description": "A high-end financial risk control dashboard featuring a multi-agent thinking engine for credit assessment and loan approval.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
