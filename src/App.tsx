@@ -17,11 +17,20 @@ import {
   Loader2,
   Download,
   BrainCircuit,
-  Database
+  Database,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
+import { 
+  Radar, 
+  RadarChart, 
+  PolarGrid, 
+  PolarAngleAxis, 
+  ResponsiveContainer 
+} from 'recharts';
 import { AgentRole, LoanApplication, RiskAnalysis, DebateTurn } from './types';
 import { I18N, AGENT_CONFIGS, SAMPLE_CASES, HISTORICAL_CASES } from './constants';
-import { startRiskDebate } from './services/geminiService';
+import { startRiskDebate } from './services/riskService';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
@@ -113,10 +122,16 @@ const App: React.FC = () => {
                   <span>{selectedCase.id}</span>
                 </div>
               </div>
-              <button disabled={isAnalyzing} onClick={() => handleAnalyze(selectedCase)} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 text-white text-sm font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50">
-                {isAnalyzing ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
-                {isAnalyzing ? (lang === 'zh' ? '穿透分析中...' : 'Analyzing...') : (lang === 'zh' ? '开始审计' : 'Start Audit')}
-              </button>
+              <div className="flex items-center gap-3">
+                <button className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all shadow-sm">
+                  <Download size={18} />
+                  {lang === 'zh' ? '导出报告' : 'Export'}
+                </button>
+                <button disabled={isAnalyzing} onClick={() => handleAnalyze(selectedCase)} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 text-white text-sm font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50">
+                  {isAnalyzing ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
+                  {isAnalyzing ? (lang === 'zh' ? '穿透分析中...' : 'Analyzing...') : (lang === 'zh' ? '开始审计' : 'Start Audit')}
+                </button>
+              </div>
             </header>
 
             <div className="flex-1 p-8 bg-slate-50/30 overflow-y-auto">
@@ -177,22 +192,70 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="col-span-4 space-y-6">
-                       <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200/60 shadow-xl h-full">
-                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Expert Scores</h3>
-                         <div className="space-y-6">
+                       <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200/60 shadow-xl h-full flex flex-col">
+                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Risk Profile</h3>
+                         
+                         <div className="flex-1 min-h-[250px] mb-6">
+                           <ResponsiveContainer width="100%" height="100%">
+                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                               { subject: 'Asset', A: analysis.riskScores.asset, fullMark: 10 },
+                               { subject: 'Business', A: analysis.riskScores.business, fullMark: 10 },
+                               { subject: 'DTI', A: analysis.riskScores.dti, fullMark: 10 },
+                               { subject: 'Fraud', A: analysis.riskScores.fraud, fullMark: 10 },
+                             ]}>
+                               <PolarGrid stroke="#e2e8f0" />
+                               <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} />
+                               <Radar
+                                 name="Risk"
+                                 dataKey="A"
+                                 stroke="#4f46e5"
+                                 fill="#4f46e5"
+                                 fillOpacity={0.5}
+                               />
+                             </RadarChart>
+                           </ResponsiveContainer>
+                         </div>
+
+                         <div className="space-y-4">
                            {Object.entries(analysis.riskScores || {}).map(([key, val]: [string, any]) => (
                              <div key={key}>
-                               <div className="flex justify-between text-xs font-black uppercase mb-2">
+                               <div className="flex justify-between text-[10px] font-black uppercase mb-1.5">
                                  <span className="text-slate-500 tracking-tighter">{key}</span>
                                  <span className="text-slate-900">{val}/10</span>
                                </div>
-                               <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                               <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
                                  <div className="h-full bg-indigo-600" style={{ width: `${(val as number)*10}%` }} />
                                </div>
                              </div>
                            ))}
                          </div>
                        </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Evidence Chain */}
+                {analysis?.evidenceChain && (
+                  <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200/60 shadow-xl">
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="p-2 bg-slate-100 rounded-lg">
+                        <Scale size={20} className="text-slate-600" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900">{t.evidence}</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {analysis.evidenceChain.map((item: string, idx: number) => (
+                        <div key={idx} className="flex gap-4 items-start p-4 rounded-2xl bg-slate-50/50 border border-slate-100">
+                          <div className="mt-1">
+                            {analysis.riskLevel === 'Low' ? (
+                              <CheckCircle2 size={18} className="text-emerald-500" />
+                            ) : (
+                              <AlertTriangle size={18} className="text-amber-500" />
+                            )}
+                          </div>
+                          <p className="text-sm font-medium text-slate-600 leading-relaxed">{item}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

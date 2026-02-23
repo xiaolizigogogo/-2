@@ -5,8 +5,8 @@
  */
 export const startRiskDebate = async (caseInfo: string, lang: 'zh' | 'en' = 'zh') => {
   try {
-    // 这里的 URL 指向您即将启动的 Python FastAPI 后端
-    const BACKEND_URL = 'http://localhost:8000/api/analyze';
+    // 这里的 URL 指向通过 Vite 代理转发的后端接口
+    const BACKEND_URL = '/api/analyze';
     
     const response = await fetch(BACKEND_URL, {
       method: 'POST',
